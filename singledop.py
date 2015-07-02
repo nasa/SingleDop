@@ -2,11 +2,11 @@
 Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
-singledop v0.5
+singledop v0.6
 Developed & tested with Python 2.7
-Last changed 05/05/2015
-    
-    
+Last changed 07/02/2015
+
+
 Author
 ------
 Timothy Lang
@@ -37,46 +37,50 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v0.6 Changes (07/02/15):
+1. Made code pep8 compliant.
+
 v0.5 Changes (05/05/15):
-1. Added NetcdfSave class that uses xray to save/load analysis object 
+1. Added NetcdfSave class that uses xray to save/load analysis object
    to/from netCDF.
-2. Created BaseAnalysis and SimpleObject helper classes to assist 
+2. Created BaseAnalysis and SimpleObject helper classes to assist
    with refactoring.
 3. Refactored AnalysisDisplay.four_panel_plot() to make it more intelligible.
 4. Added VAR_LIST global variable to store the names of most commonly shared
-   SingleDoppler2D attributes. Loop over this list to simplify attribute 
+   SingleDoppler2D attributes. Loop over this list to simplify attribute
    assignments.
 5. Changed reflectivity colormap to one available in pyart.
 
 v0.4 Changes (01/15/15):
-1. Added compute_vad_ring() and get_u_and_v_from_ws_and_wd() independent 
+1. Added compute_vad_ring() and get_u_and_v_from_ws_and_wd() independent
    functions. New SingleDoppler2D.analyze_vad_rings() method uses these
-   functions to compute VAD analyses at several ranges. The medians from this 
-   analysis are used as the scalar Ub and Vb background winds. To use VAD to get
-   background wind estimates, set the use_vad flag in SingleDoppler2D.__init__().
+   functions to compute VAD analyses at several ranges. The medians from this
+   analysis are used as the scalar Ub and Vb background winds. To use VAD to
+   get background wind estimates, set the use_vad flag in
+   SingleDoppler2D.__init__().
 2. Renamed some SingleDoppler2D methods to make their purpose clearer.
 3. More documentation added to various functions and methods.
 
 v0.3 Changes (12/29/14):
 1. Added capability of ingesting user-specified background field via Ub & Vb
-   keywords when doing analysis of real radar data. Currently Ub and Vb can only
-   be scalars.
+   keywords when doing analysis of real radar data. Currently Ub and Vb can
+   only be scalars.
 2. Moved SingleDoppler2D.compute_beta_and_m() to background wind routines to
    avoid the need for duplicate code.
 
 v0.2 Changes (12/16/2014):
 1. Added AnalysisDisplay class to take the plotting load off SingleDoppler2D.
    AnalysisDisplay has the following plotting methods: plot_velocity_vectors(),
-   plot_velocity_contours(), plot_radial_tangential_contours(), and 
-   four_panel_plot(). The latter two have hard-coded figure/axes creation, while 
-   the former two are more flexible (similar to RadarDisplay plotting methods in
-   Py-ART) and are used by the canned routines. All plotting methods have more 
-   options available now.
+   plot_velocity_contours(), plot_radial_tangential_contours(), and
+   four_panel_plot(). The latter two have hard-coded figure/axes creation,
+   while the former two are more flexible (similar to RadarDisplay plotting
+   methods in Py-ART) and are used by the canned routines. All plotting
+   methods have more options available now.
 3. Added SaveFile class to enable saving/loading of AnalysisDisplay-relevant
    information. This allows the user to avoid rerunning old retrievals.
 
 v0.1 Functionality (12/12/2014):
-1. Input simulated wind field or real radar observations of Doppler velocity. 
+1. Input simulated wind field or real radar observations of Doppler velocity.
    Retrieve 2D wind field on the conical surface of the radar beam.
 2. Basic plotting (velocity contours, velocity vectors) supported.
 
@@ -85,7 +89,7 @@ Planned Updates
 ---------------
 1. Refactoring to reduce function passing of variables
 2. Add capability to determine L from data instead of specifying it
-3. Add capability to handle more complicated functions for covariance matrix 
+3. Add capability to handle more complicated functions for covariance matrix
    elements; i.e., incl. a, b != 0, 1 in Xu et al. (2006) Eq. 2.5.
 
 """
@@ -111,7 +115,7 @@ except ImportError:
 
 ##############################
 
-VERSION = '0.5'
+VERSION = '0.6'
 
 # Hard coding of constants & default parameters
 DEFAULT_L = 30.0  # km
@@ -122,7 +126,7 @@ DEFAULT_GRID_EDGE = 60.0  # km
 DEFAULT_VR = 'velocity'
 DEFAULT_DZ = 'reflectivity'
 re = 6371.1  # km
-RNG_MULT = 1000.0 #m per km
+RNG_MULT = 1000.0  # m per km
 DZ_CMAP = lighten_cmap(cm.get_cmap('pyart_LangRainbow12'))
 VR_CMAP = 'bwr'
 DEFAULT_LABELS = ['Distance E-W (km)', 'Distance N-S (km)']
@@ -133,9 +137,10 @@ VAR_LIST = ['analysis_x', 'analysis_y', 'analysis_vr', 'analysis_vt',
 
 ##############################
 
+
 def fn_timer(function):
     """
-    Code obtained from 
+    Code obtained from
     http://www.marinamele.com/
     7-tips-to-time-python-scripts-and-control-memory-and-cpu-usage
     """
@@ -151,18 +156,19 @@ def fn_timer(function):
 
 ##############################
 
+
 class SingleDoppler2D(object):
 
     """
-    Retrieve low-level 2D winds from either real or simulated radar observations.
-    We work in two spaces: observation and analysis
+    Retrieve low-level 2D winds from either real or simulated radar
+    observations. We work in two spaces: observation and analysis.
     Observation: The space where the observations are located
     Analysis: The space defined by the analysis grid
     Both are on the 2-D conical radar sweep surface
-    
+
     Attributes
     ----------
-    grid_spacing, grid_edge = Spacing, edge info used to construct analysis grid
+    grid_spacing, grid_edge = Spacing, edge info to construct analysis grid
     sigma, sigma_obs = Standard deviation of background winds, observed winds
     L = Decorrelation length scale
     analysis_x, analysis_xf = 2D, 1D analysis grid locations along x-axis
@@ -177,17 +183,17 @@ class SingleDoppler2D(object):
     obs_vrbf = 1D background winds converted to radial velocity from radar
     obs_Crr = Error covariance matrix in observation space
     M, N = Observation matrix size, analysis grid dimension (both are square)
-    analysis_vr, analysis_vt = Retrieved radial, tangential analysis winds    
+    analysis_vr, analysis_vt = Retrieved radial, tangential analysis winds
     analysis_u, analysis_v = Retrieved U, V winds on analysis grid
-    number_of_beams, ngates = Number of beams, gates used for simulated radar obs
-    max_range = Max range to consider in analysis (can be > analysis grid extent)
+    number_of_beams, ngates = # of beams, gates used for simulated radar obs
+    max_range = Max rng to consider in analysis (can be > analysis grid extent)
     az_spacing, range_spacing = Azimuth, range spacing for simulated radar data
     azimuth, slant_range = 2D azimuth, range info for simulated observations
-    delta_vr, delta_vt = Retrieved radial, tangential increments to bkgrnd winds
+    delta_vr, delta_vt = Retrieved radial, tang. increments to bkgrnd winds
     z_vector = Solution state vector from solved linear system
     analysis_Ub, analysis_Vb = 2D background winds on analysis grid
     obs_Ub, obs_Vb = Scalar or 1D background winds in observation space
-    vad_ws, vad_wd = 1D VAD-derived wind speed and direction as function of range
+    vad_ws, vad_wd = 1D VAD wind speed and direction as function of range
     vad_u, vad_v = Median VAD-derived U, V winds on sweep (scalars)
     range_rings = 1D array of ranges used for VAD analysis
     """
@@ -199,21 +205,21 @@ class SingleDoppler2D(object):
                  Ub=None, Vb=None, name_vr=DEFAULT_VR, noise=True,
                  az_spacing=2.0, use_vad=True, verbose=False,
                  range_spacing=1.0, range_limits=None, azimuth_limits=None,
-                 max_range=100.0, xgrid=None, ygrid=None, thin_factor=[2,4]):
+                 max_range=100.0, xgrid=None, ygrid=None, thin_factor=[2, 4]):
         """
-        Initializes class based on user-specified information. If user provides a 
+        Initializes class based on user-specified information. If user provides
         Py-ART radar object, the analysis will be performed on the real data.
-        
+
         If user does not provide a radar object, then the analysis will be
-        performed using user-specified (or default) info about the simulated wind
+        performed using user-specified (or default) info about simulated wind
         field.
-        
+
         Arguments
         ---------
         radar = Py-ART radar object
         sweep_number = Sweep to consider
         grid_spacing = Resolution of analysis grid (km)
-        grid_edge = Edge of analysis grid (i.e., grid boundaries = +/- grid_edge)
+        grid_edge = Edge of analysis grid (grid boundaries = +/- grid_edge)
         sigma = Standard deviation of background wind error (wind speed units)
         sigma_obs = Standard deviation of radial velocity observation error
         L = Decorrelation length scale (km)
@@ -229,7 +235,7 @@ class SingleDoppler2D(object):
         azimuth_limits = 2-element array to mask azimuths (deg, simulated data)
         max_range = Maximum range to consider in analysis (km)
         xgrid, ygrid = User-specified 1D input grids for each axis (simulated)
-        thin_factor = 2-element array of factors by which to thin azimuth, range
+        thin_factor = 2-element array of factors to thin azimuth, range
         """
         self.populate_analysis_metadata(grid_spacing=grid_spacing,
                                         grid_edge=grid_edge, sigma=sigma,
@@ -242,8 +248,9 @@ class SingleDoppler2D(object):
                                 thin_factor=thin_factor)
             # Use VAD to obtain background field
             if use_vad:
-                self.analyze_vad_rings(field=name_vr, sweep_number=sweep_number,
-                                   verbose=verbose)
+                self.analyze_vad_rings(
+                    field=name_vr, sweep_number=sweep_number,
+                    verbose=verbose)
                 self.get_obs_background_field(self.vad_u, self.vad_v)
                 self.get_analysis_background_field(self.vad_u, self.vad_v)
             # Otherwise specify background field
@@ -251,7 +258,7 @@ class SingleDoppler2D(object):
                 self.get_obs_background_field(Ub, Vb)
                 self.get_analysis_background_field(Ub, Vb)
         else:
-            #Computation using synthetic wind data
+            # Computation using synthetic wind data
             # Mainly for testing purposes
             if xgrid is None or ygrid is None:
                 self.construct_synthetic_grid(az_spacing=az_spacing,
@@ -260,21 +267,23 @@ class SingleDoppler2D(object):
             else:
                 self.use_input_grid(xgrid=xgrid, ygrid=ygrid)
             self.construct_synthetic_U_and_V(U=U, V=V)
-            self.get_simulated_radar_data(noise=noise, range_limits=range_limits,
+            self.get_simulated_radar_data(noise=noise,
+                                          range_limits=range_limits,
                                           azimuth_limits=azimuth_limits)
-            self.get_obs_background_field(0.0, 0.0) #Bkgrnd 0.0 in sims for now
+            self.get_obs_background_field(0.0, 0.0)  # Bkgrnd 0 in sims for now
             self.get_analysis_background_field(0.0, 0.0)
         # Actual retrieval done here
         self.compute_single_doppler_retrieval()
 
-    def populate_analysis_metadata(self, grid_spacing=DEFAULT_GRID_SPACING,
-                 grid_edge=DEFAULT_GRID_EDGE, sigma=DEFAULT_SIGMA,
-                 sigma_obs=DEFAULT_SIGMA_OBS, L=DEFAULT_L):
+    def populate_analysis_metadata(
+            self, grid_spacing=DEFAULT_GRID_SPACING,
+            grid_edge=DEFAULT_GRID_EDGE, sigma=DEFAULT_SIGMA,
+            sigma_obs=DEFAULT_SIGMA_OBS, L=DEFAULT_L):
         """
         Populate grid metadata using user specified information
         Stored as class attributes to simplify function calls
         grid_spacing = Resolution of analysis grid (km)
-        grid_edge = Edge of analysis grid (i.e., grid boundaries = +/- grid_edge)
+        grid_edge = Edge of analysis grid (grid boundaries = +/- grid_edge)
         sigma = Standard deviation of background wind error (wind speed units)
         sigma_obs = Standard deviation of radial velocity observation error
         L = Decorrelation length scale (km)
@@ -298,14 +307,14 @@ class SingleDoppler2D(object):
         self.analysis_Beta = atan2_array(self.analysis_yf, self.analysis_xf)
 
     def get_radar_data(self, radar, sweep_number=0, name_vr=DEFAULT_VR,
-                       max_range=100.0, range_limits=None, thin_factor=[2,4]):
+                       max_range=100.0, range_limits=None, thin_factor=[2, 4]):
         """
-        If real radar data are used, this method retrieves the flattened vector 
+        If real radar data are used, this method retrieves the flattened vector
         of xy locations of observations as well as the observed Vr values
         radar = Py-ART radar object
         sweep_number = Sweep number to consider
         name_vr = Name of velocity field
-        max_range = Maximum range of observations to consider 
+        max_range = Maximum range of observations to consider
         range_limits = Interval of ranges to consider
         thin_factor = Multiples used to reduce azimuth [0] and range [1] data
         """
@@ -343,8 +352,8 @@ class SingleDoppler2D(object):
         azimuth_limits = 2-element array to mask azimuths (deg, simulated data)
         """
         # Following works for radar convention azimuth (0 deg = North)
-        Vr = self.U * np.sin(np.deg2rad(self.azimuth)) +\
-             self.V * np.cos(np.deg2rad(self.azimuth))
+        Vr = self.U * np.sin(np.deg2rad(self.azimuth)) + \
+            self.V * np.cos(np.deg2rad(self.azimuth))
         if noise:
             errors = np.reshape(np.random.normal(scale=self.sigma_obs,
                                                  size=np.size(self.U)),
@@ -363,7 +372,7 @@ class SingleDoppler2D(object):
             self.obs_xf = self.obs_xf[mask]
             self.obs_yf = self.obs_yf[mask]
         self.radar = None
-            
+
     def compute_beta_and_m(self):
         """
         Get observed Beta angles, as well as initialize the observation-space
@@ -382,13 +391,15 @@ class SingleDoppler2D(object):
         azimuth_limits = 2-element array to mask azimuths (deg, simulated data)
         """
         if azimuth_limits is not None:
-            azimuth_cond = np.logical_and(self.azimuth >= np.min(azimuth_limits),
-                                          self.azimuth <= np.max(azimuth_limits))
+            azimuth_cond = np.logical_and(
+                self.azimuth >= np.min(azimuth_limits),
+                self.azimuth <= np.max(azimuth_limits))
         else:
             azimuth_cond = None
         if range_limits is not None:
-            range_cond = np.logical_and(self.slant_range >= np.min(range_limits),
-                                        self.slant_range <= np.max(range_limits))
+            range_cond = np.logical_and(
+                self.slant_range >= np.min(range_limits),
+                self.slant_range <= np.max(range_limits))
         else:
             range_cond = None
         if azimuth_cond is None and range_cond is None:
@@ -401,7 +412,7 @@ class SingleDoppler2D(object):
             return range_cond.ravel()
         if azimuth_cond is not None and range_cond is None:
             return azimuth_cond.ravel()
-    
+
     @fn_timer
     def compute_single_doppler_retrieval(self):
         """
@@ -421,7 +432,8 @@ class SingleDoppler2D(object):
         delta_vr = 0.0 * self.analysis_xf
         delta_vt = 0.0 * self.analysis_xf
         for index in xrange(len(self.analysis_xf)):
-            Beta1 = math.atan2(self.analysis_yf[index], self.analysis_xf[index])
+            Beta1 = math.atan2(self.analysis_yf[index],
+                               self.analysis_xf[index])
             Ctmp = get_Crr(self.analysis_xf[index], self.analysis_yf[index],
                            self.obs_xf, self.obs_yf, self.obs_Beta,
                            self.analysis_Beta[index], self.L, self.sigma)
@@ -446,9 +458,9 @@ class SingleDoppler2D(object):
         """
         Beta = atan2_array(self.analysis_y, self.analysis_x)
         self.analysis_u = self.analysis_vr * np.cos(Beta) + \
-                          self.analysis_vt * np.cos(Beta+np.pi/2.0)
+            self.analysis_vt * np.cos(Beta+np.pi/2.0)
         self.analysis_v = self.analysis_vr * np.sin(Beta) + \
-                          self.analysis_vt * np.sin(Beta+np.pi/2.0)
+            self.analysis_vt * np.sin(Beta+np.pi/2.0)
 
     def construct_synthetic_U_and_V(self, U=10.0, V=10.0):
         """
@@ -473,8 +485,8 @@ class SingleDoppler2D(object):
 
     def use_input_grid(self, xgrid=None, ygrid=None):
         """
-        If real radar data are not used, this method will construct the simulated
-        observations grid using user-provided information.
+        If real radar data are not used, this method will construct the
+        simulated observations grid using user-provided information.
         xgrid = 1-D vector of x locations (km)
         ygrid = 1-D vector of y locations (km)
         """
@@ -489,13 +501,13 @@ class SingleDoppler2D(object):
     def construct_synthetic_grid(self, az_spacing=2.0, range_spacing=1.0,
                                  max_range=100.0):
         """
-        If real radar data are not used, this method will construct the simulated
-        observations grid using user-provided information.
+        If real radar data are not used, this method will construct the
+        simulated observations grid using user-provided information.
         az_spacing = degrees to space out the azimuth data
         range_spacing = km to space out the range data
         max_range = maximum range to consider (km)
         """
-        #Azimuth
+        # Azimuth
         if 360 % np.int32(az_spacing) != 0:  # Truncation issue?
             self.az_spacing = 2.0
         else:
@@ -508,7 +520,7 @@ class SingleDoppler2D(object):
         if self.max_range % np.int32(range_spacing) != 0:
             self.max_range = 100
             self.range_spacing = 1.0
-        self.ngates = np.int32(np.round(np.float(max_range) /\
+        self.ngates = np.int32(np.round(np.float(max_range) /
                                         self.range_spacing))
         slant_range = self.range_spacing * np.arange(self.ngates)
         self.azimuth, self.slant_range = np.meshgrid(azimuth, slant_range)
@@ -529,20 +541,21 @@ class SingleDoppler2D(object):
         self.vad_ws = 0.0 * self.range_rings
         self.vad_wd = 0.0 * self.range_rings
         for i, rng in enumerate(self.range_rings):
-            self.vad_ws[i], self.vad_wd[i] = compute_vad_ring(self.radar,
-                            slant_range=rng, field=field,
-                            sweep_number=sweep_number, verbose=verbose)
+            self.vad_ws[i], self.vad_wd[i] = compute_vad_ring(
+                self.radar, slant_range=rng, field=field,
+                sweep_number=sweep_number, verbose=verbose)
         # Find median U and V from good data
         cond = np.logical_and(self.vad_ws > BAD_DATA_VAL+1,
                               self.vad_wd > BAD_DATA_VAL+1)
         try:
-            self.vad_u, self.vad_v =\
-                get_u_and_v_from_ws_and_wd(self.vad_ws[cond], self.vad_wd[cond])
+            self.vad_u, self.vad_v = \
+                get_u_and_v_from_ws_and_wd(self.vad_ws[cond],
+                                           self.vad_wd[cond])
             self.vad_u = np.median(self.vad_u)
             self.vad_v = np.median(self.vad_v)
         except:
             warnings.warn('Not enough data for VAD, returning 0')
-            warnings.warn('This means 2DVAR will likely fail '+\
+            warnings.warn('This means 2DVAR will likely fail ' +
                           'spectacularly as well')
             self.vad_u = 0.0
             self.vad_v = 0.0
@@ -577,7 +590,7 @@ class SingleDoppler2D(object):
         self.compute_beta_and_m()
         # Following is for Beta as non-radar convention (0 = due East)
         self.obs_vrbf = self.obs_Ub * np.cos(self.obs_Beta) +\
-                        self.obs_Vb * np.sin(self.obs_Beta)
+            self.obs_Vb * np.sin(self.obs_Beta)
 
     def get_analysis_background_field(self, Ub, Vb, grid=None):
         """
@@ -595,7 +608,8 @@ class SingleDoppler2D(object):
                 self.analysis_Ub = 0.0
             else:
                 self.analysis_Ub = np.interp(rngf, grid, Ub)
-                self.analysis_Ub = np.reshape(self.analysis_Ub, (self.N, self.N))
+                self.analysis_Ub = np.reshape(self.analysis_Ub,
+                                              (self.N, self.N))
         else:
             self.analysis_Ub = Ub
         if Vb is None:
@@ -605,17 +619,19 @@ class SingleDoppler2D(object):
                 self.analysis_Vb = 0.0
             else:
                 self.analysis_Vb = np.interp(rngf, grid, Vb)
-                self.analysis_Vb = np.reshape(self.analysis_Vb, (self.N, self.N))
+                self.analysis_Vb = np.reshape(self.analysis_Vb,
+                                              (self.N, self.N))
         else:
             self.analysis_Vb = Vb
         # Following is for Beta as non-radar convention (0 = due East)
         Beta = np.reshape(self.analysis_Beta, (self.N, self.N))
-        self.analysis_vrb = self.analysis_Ub * np.cos(Beta) +\
-                            self.analysis_Vb * np.sin(Beta)
-        self.analysis_vtb = -1.0 * self.analysis_Ub * np.sin(Beta) +\
-                            self.analysis_Vb * np.cos(Beta)
+        self.analysis_vrb = self.analysis_Ub * np.cos(Beta) + \
+            self.analysis_Vb * np.sin(Beta)
+        self.analysis_vtb = -1.0 * self.analysis_Ub * np.sin(Beta) + \
+            self.analysis_Vb * np.cos(Beta)
 
 ################################
+
 
 class BaseAnalysis(object):
 
@@ -634,6 +650,7 @@ class BaseAnalysis(object):
                 warnings.warn('Not a proper analysis object, failing ...')
 
 ################################
+
 
 class AnalysisDisplay(BaseAnalysis):
 
@@ -662,7 +679,8 @@ class AnalysisDisplay(BaseAnalysis):
         cond = np.logical_and(self.analysis_x % thin == 0,
                               self.analysis_y % thin == 0)
         Q = ax.quiver(self.analysis_x[cond], self.analysis_y[cond],
-                      self.analysis_u[cond], self.analysis_v[cond], scale=scale)
+                      self.analysis_u[cond], self.analysis_v[cond],
+                      scale=scale)
         ax.quiverkey(Q, 0.85, 1.02, legend, str(legend)+' m/s',
                      coordinates='axes', labelpos='E')
         self.set_limits(xlim=xlim, ylim=ylim, ax=ax)
@@ -691,9 +709,9 @@ class AnalysisDisplay(BaseAnalysis):
         var_str, var_to_plot = self._parse_variable(var)
         ax, fig = self._parse_ax_fig(ax, fig)
         if mesh_flag:
-           cr = ax.pcolormesh(self.analysis_x, self.analysis_y, var_to_plot,
-                              vmin=np.min(levels), vmax=np.max(levels),
-                              cmap=cmap)
+            cr = ax.pcolormesh(self.analysis_x, self.analysis_y, var_to_plot,
+                               vmin=np.min(levels), vmax=np.max(levels),
+                               cmap=cmap)
         else:
             cr = ax.contourf(self.analysis_x, self.analysis_y, var_to_plot,
                              levels=levels, cmap=cmap)
@@ -705,7 +723,7 @@ class AnalysisDisplay(BaseAnalysis):
         if colorbar_flag:
             plt.colorbar(cr, label='m/s')
         self._save_image(save)
-        
+
     def plot_radial_tangential_contours(self, cmap='bwr', return_flag=False,
                                         levels=DEFAULT_LEVELS, save=None,
                                         mesh_flag=False):
@@ -717,7 +735,7 @@ class AnalysisDisplay(BaseAnalysis):
         mesh_flag = flag to switch between plt.contourf() or plt.pcolormesh()
         save = name of file to save image to
         """
-        fig = plt.figure(figsize=(14,5))
+        fig = plt.figure(figsize=(14, 5))
         ax1 = fig.add_subplot(121)
         plt.suptitle('L = '+str(self.L)+' km',
                      fontsize='large', weight='bold')
@@ -809,7 +827,7 @@ class AnalysisDisplay(BaseAnalysis):
             ax.set_ylim(self.grid_limits)
 
     def _four_pan_subplot_a(self, display, name_vr, levels, cmap):
-        fig = plt.figure(figsize=(12,12))
+        fig = plt.figure(figsize=(12, 12))
         ax1 = fig.add_subplot(221)
         if self.split_cut:
             sweep = 1
@@ -821,7 +839,7 @@ class AnalysisDisplay(BaseAnalysis):
         display.set_limits(xlim=self.grid_limits, ylim=self.grid_limits)
         plt.title('(a) Observed Radial Velocity')
         return fig, ax1
-        
+
     def _four_pan_subplot_b(self, fig, display, name_dz, scale, legend, thin):
         ax2 = fig.add_subplot(222)
         display.plot_ppi(name_dz, 0, vmin=0.0, vmax=65.0, cmap=DZ_CMAP,
@@ -830,48 +848,48 @@ class AnalysisDisplay(BaseAnalysis):
         self.plot_velocity_vectors(scale=scale, thin=thin, legend=legend,
                                    title='(b) Vector Velocity Field')
         return fig, ax2
-    
+
     def _four_pan_subplot_c(self, fig, levels, cmap):
         ax3 = fig.add_subplot(223)
         self.plot_velocity_contours(var='VR', levels=levels, cmap=cmap,
                                     colorbar_flag=False, mesh_flag=True,
                                     title='(c) Analyzed Radial Velocity')
         return fig, ax3
-                                    
+
     def _four_pan_subplot_d(self, fig, levels, cmap):
         ax4 = fig.add_subplot(224)
         self.plot_velocity_contours(var='VT', levels=levels, cmap=cmap,
                                     colorbar_flag=False, mesh_flag=True,
                                     title='(d) Analyzed Tangential Velocity')
         return fig, ax4
-        
+
     def _four_pan_colorbar_1(self, fig):
         a = np.array([[0, 65]])
-        fig.add_axes([0.01,0.01,0.02,0.02])
+        fig.add_axes([0.01, 0.01, 0.02, 0.02])
         img1 = plt.imshow(a, cmap=DZ_CMAP)
         plt.gca().set_visible(False)
         cax1 = fig.add_axes([0.92, 0.55, 0.02, 0.35])
         cb1 = plt.colorbar(orientation='vertical', cax=cax1)
         cb1.set_label('dBZ')
         return fig, cb1
-        
+
     def _four_pan_colorbar_2(self, fig, levels, cmap):
         b = np.array([[np.min(levels), np.max(levels)]])
-        fig.add_axes([0.01,0.01,0.02,0.02])
+        fig.add_axes([0.01, 0.01, 0.02, 0.02])
         img2 = plt.imshow(b, cmap=cmap)
         plt.gca().set_visible(False)
         cax2 = fig.add_axes([0.92, 0.125, 0.02, 0.35])
         cb2 = plt.colorbar(cax=cax2, orientation='vertical')
         cb2.set_label('m/s')
         return fig, cb2
-    
+
     def _save_image(self, save):
         if save is not None:
             try:
                 plt.savefig(save)
             except:
                 warnings.warn('Bad name for saving image, try again')
-    
+
     def _parse_ax(self, ax):
         """Parse and return ax parameter. Adapted from Py-ART."""
         if ax is None:
@@ -902,29 +920,31 @@ class AnalysisDisplay(BaseAnalysis):
 
 #############################
 
+
 class SaveFile(object):
-    
+
     """
-    Purpose of class is create simple I/O interface for singledop.AnalysisDisplay
-    objects, to avoid repeated 2DVAR computations if the analysis is in good 
-    shape. Uses pickle to write to or read binary files. Only saves the most 
-    critical info needed for AnalysisDiaplay methods. Must provide Py-ART radar 
-    object as argument if analysis came from non-synthetic data.
+    Purpose of class is create simple I/O interface for
+    singledop.AnalysisDisplay
+    objects, to avoid repeated 2DVAR computations if the analysis is in good
+    shape. Uses pickle to write to or read binary files. Only saves the most
+    critical info needed for AnalysisDiaplay methods. Must provide Py-ART
+    radar object as argument if analysis came from non-synthetic data.
 
     Use Examples:
-    savefile_instance = singledop.SaveFile(SingleDoppler2D_obj, 
+    savefile_instance = singledop.SaveFile(SingleDoppler2D_obj,
                                            filename='example.dat')
         -Saves SingleDoppler2D_obj to './example.dat'
-    
+
     savefile_instance = singledop.SaveFile('example.dat', radar=radar_obj)
     new_display = singledop.AnalysisDisplay(savefile_instance)
-        -Reads from pre-existing './example.dat' file and populates radar 
+        -Reads from pre-existing './example.dat' file and populates radar
          using pre-existing radar object
         -Creates AnalysisDisplay object
-        -Can also set radar='radar_file.nc' to populate radar object from given 
+        -Can also set radar='radar_file.nc' to populate radar object from given
          radar file
     """
-    
+
     def __init__(self, SingleDoppler2D=None, filename=None, filedir='./',
                  radar=None):
         """
@@ -951,12 +971,12 @@ class SaveFile(object):
                 print 'Writing to', filedir+filename
                 self.write_to_file(filename, filedir)
         elif filename is not None and isinstance(filename, str) and \
-             isinstance(filedir, str):
+                isinstance(filedir, str):
             print 'Reading from', filedir+filename
             self.read_from_file(filename, filedir, radar)
         else:
             warnings.warn('No valid arguments given, failing ...')
-        
+
     def populate_attributes(self, SingleDoppler2D):
         """SingleDoppler2D = singledop.SingleDoppler2D object"""
         if hasattr(SingleDoppler2D, 'analysis_vr'):
@@ -973,16 +993,16 @@ class SaveFile(object):
         else:
             warnings.warn('Not singledop.SingleDoppler2D object, failing ...')
             return
-        
+
     def write_to_file(self, filename, filedir='./'):
         """
         filename = Name of file to write to
         filedir = Path to file
         """
         filename = filedir + filename
-        with open(filename, 'wb') as f: 
-            pickle.dump(self, f) 
-            
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+
     def read_from_file(self, filename, filedir='./', radar=None):
         """
         filename = Name of file to read from
@@ -990,7 +1010,7 @@ class SaveFile(object):
         radar = Py-ART radar object or radar file
         """
         filename = filedir + filename
-        with open(filename, 'rb') as f: 
+        with open(filename, 'rb') as f:
             loadobj = pickle.load(f)
         self.populate_attributes(loadobj)
         if isinstance(radar, str):
@@ -999,12 +1019,13 @@ class SaveFile(object):
 
 #############################
 
+
 class NetcdfSave(object):
 
     """
     Class to facilitate saving/loading to/from a netCDF file.
     Uses xray module to interface with netCDF.
-        
+
     Example - Load from netCDF & import into AnalysisDisplay class:
     example = singledop.NetcdfSave('your_file_here.nc')
     display = singledop.AnalysisDisplay(example)
@@ -1115,16 +1136,18 @@ class NetcdfSave(object):
 
 #############################
 
+
 class SimpleObject(object):
     pass
 
 #############################
 
-#More classes go here
+# More classes go here
 
-#############################
-#Independent functions follow
-#############################
+##############################
+# Independent functions follow
+##############################
+
 
 def compute_vad_ring(radar, field='VR', slant_range=30.0, sweep_number=0,
                      verbose=False):
@@ -1132,15 +1155,15 @@ def compute_vad_ring(radar, field='VR', slant_range=30.0, sweep_number=0,
     Major reference
     ---------------
     Browning, K. A., and R. Wexler, 1968: The determination of kinematic
-    properties of a wind field using Doppler radar. J. Appl. Meteorol., 7, 
+    properties of a wind field using Doppler radar. J. Appl. Meteorol., 7,
     105-113.
-    
-    Given arguments, return wind speed and direction via VAD analysis on a single
+
+    Given arguments, return wind speed and direction via VAD analysis on single
     ring of radar data. Returns NoneType if not enough data. Radial velocity
-    should be filtered for non-met echo and unfolded before ingest. You will need
-    to iterate over multiple rings to examine a full volume (or sweep). Assumes 
+    should be filtered for non-met echo and unfolded b4 ingest. You will need
+    to iterate over multiple rings to examine a full volume (or sweep). Assumes
     PPI scanning style and data arrangement.
-    
+
     Arguments
     ---------
     radar = Py-ART radar object
@@ -1150,15 +1173,15 @@ def compute_vad_ring(radar, field='VR', slant_range=30.0, sweep_number=0,
     verbose = set to True to get warnings if not enough data for VAD
     """
     radar_sweep = radar.extract_sweeps([sweep_number])
-    rindex = np.int32(np.round((slant_range*RNG_MULT-
-                                radar_sweep.range['data'][0])/
-                               (radar_sweep.range['data'][1]-
+    rindex = np.int32(np.round((slant_range * RNG_MULT -
+                                radar_sweep.range['data'][0]) /
+                               (radar_sweep.range['data'][1] -
                                 radar_sweep.range['data'][0])))
     # Sometimes the '_FillValue' field is missing, deal with this gracefully
-    if not '_FillValue' in radar_sweep.fields[field]:
+    if '_FillValue' not in radar_sweep.fields[field]:
         radar_sweep.fields[field]['_FillValue'] = BAD_DATA_VAL
-    vr = radar_sweep.fields[field]['data'][:,
-         rindex].filled(fill_value=radar_sweep.fields[field]['_FillValue'])
+    vr = radar_sweep.fields[field]['data'][
+        :, rindex].filled(fill_value=radar_sweep.fields[field]['_FillValue'])
     cond = vr != radar_sweep.fields[field]['_FillValue']
     vr = vr[cond]
     az = radar_sweep.azimuth['data'][cond]
@@ -1167,7 +1190,7 @@ def compute_vad_ring(radar, field='VR', slant_range=30.0, sweep_number=0,
         a1 = frac * np.sum(vr * np.cos(np.deg2rad(az)))
         b1 = frac * np.sum(vr * np.sin(np.deg2rad(az)))
         vh = (a1**2 + b1**2)**0.5 /\
-             np.cos(np.deg2rad(radar_sweep.fixed_angle['data'][0]))
+            np.cos(np.deg2rad(radar_sweep.fixed_angle['data'][0]))
         if b1 < 0.0:
             phi = np.pi/2.0 - math.atan(a1/b1)
         else:
@@ -1177,6 +1200,7 @@ def compute_vad_ring(radar, field='VR', slant_range=30.0, sweep_number=0,
         if verbose:
             warnings.warn('Not enough data, failing')
         return BAD_DATA_VAL, BAD_DATA_VAL
+
 
 def rotate_azimuths(azimuth):
     """
@@ -1190,6 +1214,7 @@ def rotate_azimuths(azimuth):
     cond = np.logical_and(azimuth >= 90, azimuth <= 180)
     new_azimuth[cond] = 360.0 + (90.0 - azimuth[cond])
     return new_azimuth
+
 
 def atan2_array(y, x):
     """
@@ -1213,12 +1238,14 @@ def atan2_array(y, x):
     atan2[cond] = -1.0 * np.pi / 2.0
     return atan2
 
+
 def get_r(x, y, x1, y1):
     """
     Get r vector following Xu et al. (2006) Eq. 4.2
     x, y = arrays; x1, y1 = single points; or vice-versa
     """
     return ((x-x1)**2 + (y-y1)**2)**0.5
+
 
 def vector_mask(x, y, x1, y1, L):
     """
@@ -1227,6 +1254,7 @@ def vector_mask(x, y, x1, y1, L):
     L is decorrelation length scale
     """
     return np.exp(-1.0 * (get_r(x, y, x1, y1))**2 / (2.0 * L**2))
+
 
 def get_Crr(x, y, x1, y1, Beta, Beta1, L, sigma):
     """
@@ -1238,6 +1266,7 @@ def get_Crr(x, y, x1, y1, Beta, Beta1, L, sigma):
     """
     return (sigma**2) * vector_mask(x, y, x1, y1, L) * np.cos(Beta1 - Beta)
 
+
 def get_Crt(x, y, x1, y1, Beta, Beta1, L, sigma):
     """
     Get cross-correlation matrix components following Xu et al. (2006) Eq. 4.2
@@ -1247,6 +1276,7 @@ def get_Crt(x, y, x1, y1, Beta, Beta1, L, sigma):
     Beta = array of angles (radians); Beta1 = single angle; or vice-versa
     """
     return (sigma**2) * vector_mask(x, y, x1, y1, L) * np.sin(Beta1 - Beta)
+
 
 def get_x_and_y_from_radar(radar, sweep_number):
     """Input radar object and sweep number, return xy from radar (km, 2D)"""
@@ -1260,6 +1290,7 @@ def get_x_and_y_from_radar(radar, sweep_number):
     yy /= RNG_MULT
     return xx, yy
 
+
 def get_u_and_v_from_ws_and_wd(ws, wd, radar_convention=True, radians=False):
     """
     ws = wind speed (units irrelevant, but user should keep track of this)
@@ -1269,20 +1300,16 @@ def get_u_and_v_from_ws_and_wd(ws, wd, radar_convention=True, radians=False):
     radians = set to True if wd is provided in radians (False = deg)
     """
     if not radians:
-         wd = np.deg2rad(wd)
+        wd = np.deg2rad(wd)
     if radar_convention:
-        return -1.0*ws*np.sin(wd), -1.0*ws*np.cos(wd) #U, V
+        return -1.0*ws*np.sin(wd), -1.0*ws*np.cos(wd)  # U, V
     else:
-        return ws*np.cos(wd), ws*np.sin(wd) #U, V
+        return ws*np.cos(wd), ws*np.sin(wd)  # U, V
+
 
 def var_atts(name, units):
     return {'name': name, 'units': units}
 
 ##############################
-#Internal functions follow
+# Internal functions follow
 ##############################
-
-
-
-
-
