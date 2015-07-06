@@ -17,24 +17,24 @@ xray (https://github.com/xray/xray)
 Python Turbulence Detection Algorithm (PyTDA; https://github.com/nasa/PyTDA)
 
 Specific import calls in the DualPol source code:
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from functools import wraps
-import scipy
-import math
-import time
-import warnings
-import pickle
-import pyart
-from pyart.io.common import radar_coords_to_cart
-from pytda import get_sweep_data, get_sweep_azimuths, get_sweep_elevations,\
-                  flatten_and_reduce_data_array
-from cmap_map import lighten_cmap
-try:
-    import xray
-except ImportError:
-    warnings.warn('xray not installed, save using SaveFile (pickle)')
+import numpy as np  
+import matplotlib.pyplot as plt  
+from matplotlib import cm  
+from functools import wraps  
+import scipy  
+import math  
+import time  
+import warnings  
+import pickle  
+import pyart  
+from pyart.io.common import radar_coords_to_cart  
+from pytda import get_sweep_data, get_sweep_azimuths, get_sweep_elevations,\  
+                  flatten_and_reduce_data_array  
+from cmap_map import lighten_cmap  
+try:  
+    import xray  
+except ImportError:  
+    warnings.warn('xray not installed, save using SaveFile (pickle)')  
 
 Using SingleDop
 ---------------
