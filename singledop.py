@@ -97,10 +97,11 @@ Planned Updates
 
 """
 
+from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from functools import wraps
+import sys
 import scipy
 import math
 import time
@@ -118,7 +119,7 @@ except ImportError:
 
 ##############################
 
-VERSION = '0.6'
+VERSION = '0.7'
 
 # Hard coding of constants & default parameters
 DEFAULT_L = 30.0  # km
@@ -137,25 +138,6 @@ DEFAULT_LEVELS = -24.0 + 4.0 * np.arange(13)
 BAD_DATA_VAL = -32768
 VAR_LIST = ['analysis_x', 'analysis_y', 'analysis_vr', 'analysis_vt',
             'analysis_u', 'analysis_v', 'grid_limits', 'L']
-
-##############################
-
-
-# def fn_timer(function):
-#     """
-#     Code obtained from
-#     http://www.marinamele.com/
-#     7-tips-to-time-python-scripts-and-control-memory-and-cpu-usage
-#     """
-#     @wraps(function)
-#     def function_timer(*args, **kwargs):
-#         t0 = time.time()
-#         result = function(*args, **kwargs)
-#         t1 = time.time()
-#         print("Total time running %s: %s seconds" %
-#               (function.func_name, str(t1-t0)))
-#         return result
-#     return function_timer
 
 ##############################
 
@@ -416,7 +398,6 @@ class SingleDoppler2D(object):
         if azimuth_cond is not None and range_cond is None:
             return azimuth_cond.ravel()
 
-#    @fn_timer
     def compute_single_doppler_retrieval(self):
         """
         Performs single-Doppler retrieval whether input data are real
@@ -531,7 +512,6 @@ class SingleDoppler2D(object):
         self.obs_x = self.slant_range * np.sin(np.deg2rad(self.azimuth))
         self.obs_y = self.slant_range * np.cos(np.deg2rad(self.azimuth))
 
-#    @fn_timer
     def analyze_vad_rings(self, field='VR', sweep_number=0, verbose=False):
         """
         Given a radial velocity sweep, compute VAD on a number of range rings.
