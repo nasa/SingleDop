@@ -6,12 +6,12 @@ The interface is simplified to a single line of code in the end user's Python sc
 
 SingleDop Installation
 ----------------------
-SingleDop works under Python 2.x on most Mac/Linux setups. Windows installation is currently untested.
+SingleDop works under Python 2.7 and 3.4 on most Mac/Linux setups. Windows installation and other Python version are currently untested.
 
 Put singledop.py and cmap_map.py in your PYTHONPATH.
 
 The following dependencies need to be installed first:
-A robust version of Python 2.x w/ most standard scientific packages (e.g., numpy, matplotlib, scipy, etc.) - Get one for free here: https://store.continuum.io/cshop/anaconda/
+A robust version of Python 2.7 or 3.4 w/ most standard scientific packages (e.g., numpy, matplotlib, scipy, etc.) - Get one for free here: https://store.continuum.io/cshop/anaconda/
 The Python Atmospheric Radiation Measurement (ARM) Radar Toolkit (Py-ART; https://github.com/ARM-DOE/pyart)
 xray (https://github.com/xray/xray)
 Python Turbulence Detection Algorithm (PyTDA; https://github.com/nasa/PyTDA)
@@ -41,4 +41,4 @@ Using SingleDop
 To access everything:
 import singledop
 
-A demonstration notebook is under construction.
+A demonstration notebook is in the notebooks directory.
