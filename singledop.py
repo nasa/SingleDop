@@ -3,8 +3,8 @@ Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
 singledop v0.6
-Developed & tested with Python 2.7
-Last changed 07/02/2015
+Developed & tested with Python 2.7 & 3.4
+Last changed 08/03/2015
 
 
 Author
@@ -37,6 +37,9 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v0.7 Changes (08/03/15):
+1. Made code compatible with Python 3.
+
 v0.6 Changes (07/02/15):
 1. Made code pep8 compliant.
 
@@ -138,21 +141,21 @@ VAR_LIST = ['analysis_x', 'analysis_y', 'analysis_vr', 'analysis_vt',
 ##############################
 
 
-def fn_timer(function):
-    """
-    Code obtained from
-    http://www.marinamele.com/
-    7-tips-to-time-python-scripts-and-control-memory-and-cpu-usage
-    """
-    @wraps(function)
-    def function_timer(*args, **kwargs):
-        t0 = time.time()
-        result = function(*args, **kwargs)
-        t1 = time.time()
-        print ("Total time running %s: %s seconds" %
-               (function.func_name, str(t1-t0)))
-        return result
-    return function_timer
+# def fn_timer(function):
+#     """
+#     Code obtained from
+#     http://www.marinamele.com/
+#     7-tips-to-time-python-scripts-and-control-memory-and-cpu-usage
+#     """
+#     @wraps(function)
+#     def function_timer(*args, **kwargs):
+#         t0 = time.time()
+#         result = function(*args, **kwargs)
+#         t1 = time.time()
+#         print("Total time running %s: %s seconds" %
+#               (function.func_name, str(t1-t0)))
+#         return result
+#     return function_timer
 
 ##############################
 
@@ -381,7 +384,7 @@ class SingleDoppler2D(object):
         # Beta is in non-radar convention (0 = E)
         self.obs_Beta = atan2_array(self.obs_yf, self.obs_xf)
         self.M = len(self.obs_vrf)
-        print self.M, 'total observations (M)'
+        print(self.M, 'total observations (M)')
         self.obs_Crr = np.zeros((self.M, self.M), 'float')
 
     def create_mask(self, azimuth_limits=None, range_limits=None):
@@ -413,13 +416,13 @@ class SingleDoppler2D(object):
         if azimuth_cond is not None and range_cond is None:
             return azimuth_cond.ravel()
 
-    @fn_timer
+#    @fn_timer
     def compute_single_doppler_retrieval(self):
         """
         Performs single-Doppler retrieval whether input data are real
         or simulated. Matrix equations solved via stock SciPy/NumPy routines
         """
-        for index in xrange(self.M):
+        for index in np.arange(self.M):
             Beta1 = math.atan2(self.obs_yf[index], self.obs_xf[index])
             Ctmp = get_Crr(self.obs_xf, self.obs_yf, self.obs_xf[index],
                            self.obs_yf[index], self.obs_Beta, Beta1,
@@ -431,7 +434,7 @@ class SingleDoppler2D(object):
         # self.z_vector = np.linalg.solve(A, b)  # scipy appears to be faster
         delta_vr = 0.0 * self.analysis_xf
         delta_vt = 0.0 * self.analysis_xf
-        for index in xrange(len(self.analysis_xf)):
+        for index in np.arange(len(self.analysis_xf)):
             Beta1 = math.atan2(self.analysis_yf[index],
                                self.analysis_xf[index])
             Ctmp = get_Crr(self.analysis_xf[index], self.analysis_yf[index],
@@ -491,7 +494,7 @@ class SingleDoppler2D(object):
         ygrid = 1-D vector of y locations (km)
         """
         if len(xgrid) != len(ygrid):
-            print 'use_input_grid: x/ygrid sizes don\'t match, failing ...'
+            print('use_input_grid: x/ygrid sizes don\'t match, failing ...')
             return
         self.obs_x, self.obs_y = np.meshgrid(xgrid, ygrid)
         self.azimuth = np.rad2deg(atan2_array(self.obs_y, self.obs_x))
@@ -528,7 +531,7 @@ class SingleDoppler2D(object):
         self.obs_x = self.slant_range * np.sin(np.deg2rad(self.azimuth))
         self.obs_y = self.slant_range * np.cos(np.deg2rad(self.azimuth))
 
-    @fn_timer
+#    @fn_timer
     def analyze_vad_rings(self, field='VR', sweep_number=0, verbose=False):
         """
         Given a radial velocity sweep, compute VAD on a number of range rings.
@@ -772,7 +775,7 @@ class AnalysisDisplay(BaseAnalysis):
         """
         self.split_cut = split_cut
         if self.radar is None:
-            print 'Missing radar object, try again'
+            print('Missing radar object, try again')
             return
         plt.close()
         display = pyart.graph.RadarDisplay(self.radar)
@@ -959,20 +962,20 @@ class SaveFile(object):
             if isinstance(SingleDoppler2D, str):
                 if isinstance(filedir, str):
                     SingleDoppler2D = filedir+SingleDoppler2D
-                print 'Attempting to read from', SingleDoppler2D
+                print('Attempting to read from', SingleDoppler2D)
                 self.read_from_file(filename=filedir+SingleDoppler2D,
                                     radar=radar)
                 return
             # Rest assumes user provided non-string object
-            print 'Initializing singledop.SaveFile object'
+            print('Initializing singledop.SaveFile object')
             self.populate_attributes(SingleDoppler2D)
             if filename is not None and isinstance(filename, str) and \
                isinstance(filedir, str):
-                print 'Writing to', filedir+filename
+                print('Writing to', filedir+filename)
                 self.write_to_file(filename, filedir)
         elif filename is not None and isinstance(filename, str) and \
                 isinstance(filedir, str):
-            print 'Reading from', filedir+filename
+            print('Reading from', filedir+filename)
             self.read_from_file(filename, filedir, radar)
         else:
             warnings.warn('No valid arguments given, failing ...')
@@ -1064,15 +1067,18 @@ class NetcdfSave(object):
         if not hasattr(self.analysis, 'analysis_u'):
             self.analysis.get_velocity_vectors()
         if hasattr(self.analysis, 'radar'):
-            self.time = self.analysis.radar.time['units'][14:]
-            if hasattr(self.analysis.radar.latitude['data'], '__len__'):
-                self.lat = self.analysis.radar.latitude['data'][0]
-                self.lon = self.analysis.radar.longitude['data'][0]
+            if self.analysis.radar is not None:
+                self.time = self.analysis.radar.time['units'][14:]
+                if hasattr(self.analysis.radar.latitude['data'], '__len__'):
+                    self.lat = self.analysis.radar.latitude['data'][0]
+                    self.lon = self.analysis.radar.longitude['data'][0]
+                else:
+                    self.lat = self.analysis.radar.latitude['data']
+                    self.lon = self.analysis.radar.longitude['data']
+                att = {'time': self.time, 'radar_latitude': self.lat,
+                       'radar_longitude': self.lon}
             else:
-                self.lat = self.analysis.radar.latitude['data']
-                self.lon = self.analysis.radar.longitude['data']
-            att = {'time': self.time, 'radar_latitude': self.lat,
-                   'radar_longitude': self.lon}
+                att = None
         else:
             att = None
         self._get_data_arrays()
