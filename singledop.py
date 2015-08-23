@@ -2,9 +2,9 @@
 Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
-singledop v0.6
+singledop v0.8
 Developed & tested with Python 2.7 & 3.4
-Last changed 08/03/2015
+Last changed 08/23/2015
 
 
 Author
@@ -37,6 +37,9 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v0.8 Changes (08/23/15):
+1. Fixed issues for when radar object fields lack masks or fill values.
+
 v0.7 Changes (08/03/15):
 1. Made code compatible with Python 3.
 
@@ -119,7 +122,7 @@ except ImportError:
 
 ##############################
 
-VERSION = '0.7'
+VERSION = '0.8'
 
 # Hard coding of constants & default parameters
 DEFAULT_L = 30.0  # km
@@ -304,7 +307,10 @@ class SingleDoppler2D(object):
         thin_factor = Multiples used to reduce azimuth [0] and range [1] data
         """
         vr_sweep = get_sweep_data(radar, name_vr, sweep_number)
-        fill_val = radar.fields[name_vr]['_FillValue']
+        try:
+            fill_val = radar.fields[name_vr]['_FillValue']
+        except KeyError:
+            fill_val = BAD_DATA_VAL
         xx, yy = get_x_and_y_from_radar(radar, sweep_number)
         groundr = (xx**2 + yy**2)**0.5
         xx = xx[0::thin_factor[0], 0::thin_factor[1]]
@@ -1166,8 +1172,12 @@ def compute_vad_ring(radar, field='VR', slant_range=30.0, sweep_number=0,
     # Sometimes the '_FillValue' field is missing, deal with this gracefully
     if '_FillValue' not in radar_sweep.fields[field]:
         radar_sweep.fields[field]['_FillValue'] = BAD_DATA_VAL
-    vr = radar_sweep.fields[field]['data'][
-        :, rindex].filled(fill_value=radar_sweep.fields[field]['_FillValue'])
+    # What if field is not a masked array?
+    try:
+        vr = radar_sweep.fields[field]['data'][:, rindex].filled(
+            fill_value=radar_sweep.fields[field]['_FillValue'])
+    except AttributeError:
+        vr = radar_sweep.fields[field]['data'][:, rindex]
     cond = vr != radar_sweep.fields[field]['_FillValue']
     vr = vr[cond]
     az = radar_sweep.azimuth['data'][cond]
