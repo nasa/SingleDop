@@ -4,7 +4,7 @@ Title/Version
 Single Doppler Retrieval Toolkit (SingleDop)
 singledop v0.8
 Developed & tested with Python 2.7 & 3.4
-Last changed 08/23/2015
+Last changed 08/31/2015
 
 
 Author
@@ -37,8 +37,9 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
-v0.8 Changes (08/23/15):
+v0.8 Changes (08/31/15):
 1. Fixed issues for when radar object fields lack masks or fill values.
+2. Added ability to select display sweep in AnalysisDisplay.four_panel_plot()
 
 v0.7 Changes (08/03/15):
 1. Made code compatible with Python 3.
@@ -742,7 +743,7 @@ class AnalysisDisplay(BaseAnalysis):
     def four_panel_plot(self, scale=600.0, levels=-24.0+4.0*np.arange(13),
                         cmap='bwr', return_flag=False, thin=4, legend=10.0,
                         save=None, name_dz=DEFAULT_DZ, name_vr=DEFAULT_VR,
-                        split_cut=False):
+                        split_cut=False, sweep=0):
         """
         Produces 4-panel plot
         (a) = Observed Vr
@@ -765,9 +766,10 @@ class AnalysisDisplay(BaseAnalysis):
             return
         plt.close()
         display = pyart.graph.RadarDisplay(self.radar)
-        fig, ax1 = self._four_pan_subplot_a(display, name_vr, levels, cmap)
+        fig, ax1 = self._four_pan_subplot_a(display, name_vr, levels, cmap,
+                                            sweep)
         fig, ax2 = self._four_pan_subplot_b(fig, display, name_dz, scale,
-                                            legend, thin)
+                                            legend, thin, sweep)
         fig, ax3 = self._four_pan_subplot_c(fig, levels, cmap)
         fig, ax4 = self._four_pan_subplot_d(fig, levels, cmap)
         fig, cb1 = self._four_pan_colorbar_1(fig)
@@ -815,13 +817,11 @@ class AnalysisDisplay(BaseAnalysis):
         else:
             ax.set_ylim(self.grid_limits)
 
-    def _four_pan_subplot_a(self, display, name_vr, levels, cmap):
+    def _four_pan_subplot_a(self, display, name_vr, levels, cmap, sweep):
         fig = plt.figure(figsize=(12, 12))
         ax1 = fig.add_subplot(221)
         if self.split_cut:
-            sweep = 1
-        else:
-            sweep = 0
+            sweep += 1
         display.plot_ppi(name_vr, sweep, vmin=np.min(levels),
                          vmax=np.max(levels), cmap=cmap, colorbar_flag=False,
                          axislabels=DEFAULT_LABELS)
@@ -829,9 +829,10 @@ class AnalysisDisplay(BaseAnalysis):
         plt.title('(a) Observed Radial Velocity')
         return fig, ax1
 
-    def _four_pan_subplot_b(self, fig, display, name_dz, scale, legend, thin):
+    def _four_pan_subplot_b(self, fig, display, name_dz, scale, legend, thin,
+                            sweep):
         ax2 = fig.add_subplot(222)
-        display.plot_ppi(name_dz, 0, vmin=0.0, vmax=65.0, cmap=DZ_CMAP,
+        display.plot_ppi(name_dz, sweep, vmin=0.0, vmax=65.0, cmap=DZ_CMAP,
                          colorbar_flag=False, axislabels=DEFAULT_LABELS)
         display.set_limits(xlim=self.grid_limits, ylim=self.grid_limits)
         self.plot_velocity_vectors(scale=scale, thin=thin, legend=legend,
