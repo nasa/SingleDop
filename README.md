@@ -13,9 +13,9 @@ Put `singledop.py` and `cmap_map.py` in your `PYTHONPATH`.
 The following dependencies need to be installed first:
 
 - A robust version of Python 2.7 or 3.4 w/ most standard scientific packages (e.g., numpy, matplotlib, scipy, etc.) - Get one for free here: https://store.continuum.io/cshop/anaconda/
-- The Python Atmospheric Radiation Measurement (ARM) Radar Toolkit (Py-ART; https://github.com/ARM-DOE/pyart)
-- xray (https://github.com/xray/xray)
-- Python Turbulence Detection Algorithm (PyTDA; https://github.com/nasa/PyTDA)
+- [The Python Atmospheric Radiation Measurement (ARM) Radar Toolkit (Py-ART)](https://github.com/ARM-DOE/pyart)
+- [xray](https://github.com/xray/xray)
+- [Python Turbulence Detection Algorithm (PyTDA)](https://github.com/nasa/PyTDA)
 
 Specific import calls in the DualPol source code:
 ```
