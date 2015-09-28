@@ -8,7 +8,7 @@ SingleDop Installation
 ----------------------
 SingleDop works under Python 2.7 and 3.4 on most Mac/Linux setups. Windows installation and other Python version are currently untested.
 
-Put singledop.py and cmap_map.py in your PYTHONPATH.
+Put `singledop.py` and `cmap_map.py` in your `PYTHONPATH`.
 
 The following dependencies need to be installed first:
 A robust version of Python 2.7 or 3.4 w/ most standard scientific packages (e.g., numpy, matplotlib, scipy, etc.) - Get one for free here: https://store.continuum.io/cshop/anaconda/
@@ -17,6 +17,7 @@ xray (https://github.com/xray/xray)
 Python Turbulence Detection Algorithm (PyTDA; https://github.com/nasa/PyTDA)
 
 Specific import calls in the DualPol source code:
+```
 import numpy as np  
 import matplotlib.pyplot as plt  
 from matplotlib import cm  
@@ -35,10 +36,13 @@ try:
     import xray  
 except ImportError:  
     warnings.warn('xray not installed, save using SaveFile (pickle)')  
+```
 
 Using SingleDop
 ---------------
 To access everything:
+```
 import singledop
+```
 
 A demonstration notebook is in the notebooks directory.
