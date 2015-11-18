@@ -815,7 +815,7 @@ class AnalysisDisplay(BaseAnalysis):
         if xlim is not None:
             ax.set_xlim(xlim)
         else:
-            ax.set_ylim(self.grid_limits)
+            ax.set_xlim(self.grid_limits)
 
     def _four_pan_subplot_a(self, display, name_vr, levels, cmap, sweep):
         fig = plt.figure(figsize=(12, 12))
