@@ -9,7 +9,7 @@ setup(
     license='LICENSE.txt',
     description='Single Doppler Retrieval Toolkit',
     long_description=open('description.txt').read(),
-    install_requires=['arm_pyart', 'pytda','xray'],
+    install_requires=['arm_pyart', 'pytda', 'xray'],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console"
