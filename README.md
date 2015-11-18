@@ -19,7 +19,7 @@ The following dependencies need to be installed first:
 - [xray](https://github.com/xray/xray)
 - [Python Turbulence Detection Algorithm (PyTDA)](https://github.com/nasa/PyTDA)
 
-Specific import calls in the DualPol source code:
+Specific import calls in the SingleDop source code:
 ```
 from __future__ import division, print_function
 import numpy as np
