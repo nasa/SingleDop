@@ -7,7 +7,7 @@ The interface is simplified to a single line of code in the end user's Python sc
 
 SingleDop Installation
 ----------------------
-SingleDop works under Python 2.7 and 3.4 on most Mac/Linux setups. Windows installation and other Python version are currently untested.
+SingleDop works under Python 2.7 and 3.4 on most Mac/Linux setups. Windows installation and other Python versions are currently untested.
 
 To install:  
 `python setup.py install`
