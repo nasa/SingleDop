@@ -8,7 +8,8 @@ SingleDop Installation
 ----------------------
 SingleDop works under Python 2.7 and 3.4 on most Mac/Linux setups. Windows installation and other Python version are currently untested.
 
-Put `singledop.py` and `cmap_map.py` in your `PYTHONPATH`.
+To install:  
+`python setup.py install`
 
 The following dependencies need to be installed first:
 
