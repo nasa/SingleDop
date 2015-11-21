@@ -1,1 +1,14 @@
 *.pyc
+old
+dist
+__pycache__
+notebooks/*.dat
+notebooks/*.nc
+notebooks/*.png
+notebooks/Python2-3_transition.ipynb
+notebooks/.ipynb_checkpoints
+build
+references
+release
+SingleDop.egg-info
+test

@@ -6,7 +6,7 @@ setup(
     author='Timothy Lang',
     author_email='timothy.j.lang@nasa.gov',
     packages=['singledop',],
-    license='LICENSE.txt',
+    license='LICENSE.md',
     description='Single Doppler Retrieval Toolkit',
     long_description=open('description.txt').read(),
     install_requires=['arm_pyart', 'pytda', 'xray'],
@@ -14,5 +14,4 @@ setup(
         "Development Status :: 3 - Alpha",
         "Environment :: Console"
         ],
-
 )
