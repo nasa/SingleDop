@@ -37,6 +37,10 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v0.8.1 Changes (11/30/15):
+1. Added common sub-module with radar_coords_to_cart function that Py-ART
+   just removed.
+
 v0.8 Changes (08/31/15):
 1. Fixed issues for when radar object fields lack masks or fill values.
 2. Added ability to select display sweep in AnalysisDisplay.four_panel_plot()
@@ -112,9 +116,9 @@ import time
 import warnings
 import pickle
 import pyart
-from pyart.io.common import radar_coords_to_cart
 from pytda import get_sweep_data, get_sweep_azimuths, get_sweep_elevations,\
                   flatten_and_reduce_data_array
+from .common import radar_coords_to_cart
 from .cmap_map import lighten_cmap
 try:
     import xray
@@ -123,7 +127,7 @@ except ImportError:
 
 ##############################
 
-VERSION = '0.8'
+VERSION = '0.8.1'
 
 # Hard coding of constants & default parameters
 DEFAULT_L = 30.0  # km
