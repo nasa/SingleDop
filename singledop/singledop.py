@@ -2,9 +2,9 @@
 Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
-singledop v0.8
+singledop v0.9
 Developed & tested with Python 2.7 & 3.4
-Last changed 08/31/2015
+Last changed 02/01/2016
 
 
 Author
@@ -17,15 +17,15 @@ timothy.j.lang@nasa.gov
 
 Overview
 --------
-To access this module, add the following to your program and then make sure
-the path to this script is in your PYTHONPATH:
+To access this module, install it from the source using the setup.py script.
+Then:
 import singledop
 
 
 Notes
 -----
 Dependencies: numpy, matplotlib, basemap, scipy, math, time, pyart, pytda,
-              cmap_map, functools, pickle, warnings, xray
+              pickle, warnings, xray/xarray
 
 
 References
@@ -37,6 +37,11 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v0.9 Changes (02/01/16):
+1. Added ability to filter retrievals far from observations, via filter_data &
+   filter_distance keywords. These values are masked.
+2. Updated import statements to use xarray if available.
+
 v0.8.1 Changes (11/30/15):
 1. Added common sub-module with radar_coords_to_cart function that Py-ART
    just removed.
@@ -116,18 +121,22 @@ import time
 import warnings
 import pickle
 import pyart
-from pytda import get_sweep_data, get_sweep_azimuths, get_sweep_elevations,\
+from pytda import get_sweep_data, get_sweep_azimuths, get_sweep_elevations, \
                   flatten_and_reduce_data_array
 from .common import radar_coords_to_cart
 from .cmap_map import lighten_cmap
 try:
-    import xray
+    import xarray as xray
 except ImportError:
-    warnings.warn('xray not installed, save using SaveFile (pickle)')
+    try:
+        import xray
+    except ImportError:
+        warnings.warn(
+            'xray/xarray not installed, save using SaveFile (pickle)')
 
 ##############################
 
-VERSION = '0.8.1'
+VERSION = '0.9'
 
 # Hard coding of constants & default parameters
 DEFAULT_L = 30.0  # km
@@ -189,6 +198,8 @@ class SingleDoppler2D(object):
     vad_ws, vad_wd = 1D VAD wind speed and direction as function of range
     vad_u, vad_v = Median VAD-derived U, V winds on sweep (scalars)
     range_rings = 1D array of ranges used for VAD analysis
+    filter_data = Boolean controlling whether distance retrievals are filtered.
+    filter_distance = Distance (km) beyond which retrieved data are filtered.
     """
 
     def __init__(self, radar=None, sweep_number=0,
@@ -198,7 +209,8 @@ class SingleDoppler2D(object):
                  Ub=None, Vb=None, name_vr=DEFAULT_VR, noise=True,
                  az_spacing=2.0, use_vad=True, verbose=False,
                  range_spacing=1.0, range_limits=None, azimuth_limits=None,
-                 max_range=100.0, xgrid=None, ygrid=None, thin_factor=[2, 4]):
+                 max_range=100.0, xgrid=None, ygrid=None, thin_factor=[2, 4],
+                 filter_data=False, filter_distance=None):
         """
         Initializes class based on user-specified information. If user provides
         Py-ART radar object, the analysis will be performed on the real data.
@@ -229,10 +241,20 @@ class SingleDoppler2D(object):
         max_range = Maximum range to consider in analysis (km)
         xgrid, ygrid = User-specified 1D input grids for each axis (simulated)
         thin_factor = 2-element array of factors to thin azimuth, range
+        filter_data = Set to True to filter retrievals in regions far
+                      from observations
+        filter_distance = Min distance (km) from nearest obs to filter data.
+                          Set to L / 2 by default.
         """
         self.populate_analysis_metadata(grid_spacing=grid_spacing,
                                         grid_edge=grid_edge, sigma=sigma,
                                         sigma_obs=sigma_obs, L=L)
+        self.filter_data = filter_data
+        if filter_distance is None:
+            self.filter_distance = self.L / 2
+        else:
+            self.filter_distance = filter_distance
+
         if radar is not None:
             # Computation using real radar data
             self.get_radar_data(radar, sweep_number=sweep_number,
@@ -336,6 +358,30 @@ class SingleDoppler2D(object):
         self.obs_yf = flatten_and_reduce_data_array(yy, condition)
         self.obs_vrf = flatten_and_reduce_data_array(vr_sweep, condition)
         self.radar = radar
+
+    def filter_distant_gridpoints(self):
+        """
+        Single-Doppler analyses tend to blow up far from real data.
+        This method sets retrieved Vr & Vt values to 0 when the distance
+        to the closest real data point is > L/2.
+        """
+        if self.filter_data:
+            axf = self.analysis_x.ravel()
+            ayf = self.analysis_y.ravel()
+            avrf = self.analysis_vr.ravel()
+            avtf = self.analysis_vt.ravel()
+            for i in np.arange(len(axf)):
+                dist = np.sqrt(
+                    (self.obs_xf-axf[i])**2 + (self.obs_yf-ayf[i])**2)
+                if np.min(dist) > self.filter_distance:
+                    avrf[i] = BAD_DATA_VAL
+                    avtf[i] = BAD_DATA_VAL
+            self.analysis_vr = np.reshape(avrf, (self.N, self.N))
+            self.analysis_vt = np.reshape(avtf, (self.N, self.N))
+        self.analysis_vr = np.ma.asanyarray(self.analysis_vr)
+        self.analysis_vr.mask = self.analysis_vr == BAD_DATA_VAL
+        self.analysis_vt = np.ma.asanyarray(self.analysis_vt)
+        self.analysis_vt.mask = self.analysis_vt == BAD_DATA_VAL
 
     def get_simulated_radar_data(self, noise=True, range_limits=None,
                                  azimuth_limits=None):
@@ -446,6 +492,7 @@ class SingleDoppler2D(object):
         # But for atan2 output angle increases with CCW rotation
         self.delta_vt *= -1.0
         self.analysis_vt = self.delta_vt + self.analysis_vtb
+        self.filter_distant_gridpoints()
 
     def get_velocity_vectors(self):
         """
@@ -635,7 +682,12 @@ class BaseAnalysis(object):
                 if not hasattr(analysis, 'analysis_u'):
                     analysis.get_velocity_vectors()
                 for var in VAR_LIST:
-                    setattr(self, var, getattr(analysis, var))
+                    values = getattr(analysis, var)
+                    # Mask missing data due to distance filtering
+                    if var in ['analysis_vr', 'analysis_vt',
+                               'analysis_u', 'analysis_v']:
+                        values = np.ma.masked_invalid(values)
+                    setattr(self, var, values)
                 if hasattr(analysis, 'radar'):
                     self.radar = analysis.radar
                 else:
