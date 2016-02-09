@@ -4,7 +4,7 @@ Title/Version
 Single Doppler Retrieval Toolkit (SingleDop)
 singledop v0.9
 Developed & tested with Python 2.7 & 3.4
-Last changed 02/01/2016
+Last changed 02/09/2016
 
 
 Author
@@ -37,10 +37,11 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
-v0.9 Changes (02/01/16):
+v0.9 Changes (02/09/16):
 1. Added ability to filter retrievals far from observations, via filter_data &
    filter_distance keywords. These values are masked.
 2. Updated import statements to use xarray if available.
+3. Added additional title text to AnalysisDisplay.four_panel_plot() method.
 
 v0.8.1 Changes (11/30/15):
 1. Added common sub-module with radar_coords_to_cart function that Py-ART
@@ -830,6 +831,8 @@ class AnalysisDisplay(BaseAnalysis):
         fig, ax4 = self._four_pan_subplot_d(fig, levels, cmap)
         fig, cb1 = self._four_pan_colorbar_1(fig)
         fig, cb2 = self._four_pan_colorbar_2(fig, levels, cmap)
+        title_text = self._get_radar_info(sweep)
+        fig.suptitle(title_text, fontsize=14, y=0.94)
         self._save_image(save)
         if return_flag:
             return fig, ax1, ax2, ax3, ax4
@@ -928,6 +931,21 @@ class AnalysisDisplay(BaseAnalysis):
         cb2 = plt.colorbar(cax=cax2, orientation='vertical')
         cb2.set_label('m/s')
         return fig, cb2
+
+    def _get_radar_info(self, sweep):
+        """Derived from similar functions in Py-ART"""
+        if self.split_cut:
+            sweep += 1
+        swpstr = '%.1f deg' % self.radar.fixed_angle['data'][0]
+        if 'instrument_name' in self.radar.metadata:
+            radstr = self.radar.metadata['instrument_name']
+        else:
+            radstr = ''
+        try:
+            timstr = self.radar.time['units'][-20:]
+        except:
+            timstr = ''
+        return radstr + ' ' + timstr + ' ' + swpstr
 
     def _save_image(self, save):
         if save is not None:
