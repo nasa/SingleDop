@@ -2,9 +2,9 @@
 Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
-singledop v0.9
+singledop v1.0
 Developed & tested with Python 2.7 & 3.4
-Last changed 02/09/2016
+Last changed 10/10/2016
 
 
 Author
@@ -37,6 +37,12 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v1.0 Changes (10/10/16):
+1. Added ability to specify 2D background fields (Ub, Vb). These fields must
+   be on same grid as the analysis.
+2. Added SingleDoppler2D._get_sorted_coords() method to support this 2D
+   background field option.
+
 v0.9 Changes (02/09/16):
 1. Added ability to filter retrievals far from observations, via filter_data &
    filter_distance keywords. These values are masked.
@@ -195,7 +201,7 @@ class SingleDoppler2D(object):
     delta_vr, delta_vt = Retrieved radial, tang. increments to bkgrnd winds
     z_vector = Solution state vector from solved linear system
     analysis_Ub, analysis_Vb = 2D background winds on analysis grid
-    obs_Ub, obs_Vb = Scalar or 1D background winds in observation space
+    obs_Ub, obs_Vb = Scalar, 1D, or 2D background winds in observation space
     vad_ws, vad_wd = 1D VAD wind speed and direction as function of range
     vad_u, vad_v = Median VAD-derived U, V winds on sweep (scalars)
     range_rings = 1D array of ranges used for VAD analysis
@@ -230,7 +236,7 @@ class SingleDoppler2D(object):
         sigma_obs = Standard deviation of radial velocity observation error
         L = Decorrelation length scale (km)
         U, V = Synthetic U, V winds (for simulated data only)
-        Ub, Vb = User specified background U, V winds (normally scalars)
+        Ub, Vb = User specified background U, V winds (scalar, 1D, 2D)
         name_vr = Py-ART field name used for radial velocity
         noise = Flag to turn on/off Gaussian noise in synthetic radar obs
         az_spacing = Spacing used to develop synthetic radar obs (deg)
@@ -267,6 +273,11 @@ class SingleDoppler2D(object):
                 self.analyze_vad_rings(
                     field=name_vr, sweep_number=sweep_number,
                     verbose=verbose)
+                # Combine VAD and Ub/Vb if available
+                if Ub is not None:
+                    self.vad_u += Ub
+                if Vb is not None:
+                    self.vad_v += Vb
                 self.get_obs_background_field(self.vad_u, self.vad_v)
                 self.get_analysis_background_field(self.vad_u, self.vad_v)
             # Otherwise specify background field
@@ -609,21 +620,41 @@ class SingleDoppler2D(object):
         Ub, Vb = Background U & V winds
         grid = 1D array of ranges to consider (from VAD)
         """
+        iflag = False
         if hasattr(Ub, '__len__') or hasattr(Vb, '__len__'):
             rngf = (self.obs_xf**2 + self.obs_yf**2)**0.5
+        # Background U
         if Ub is None:
             self.obs_Ub = 0.0
         elif hasattr(Ub, '__len__'):
-            if grid is None:
+            if np.ndim(Ub) == 2:
+                # Assumes that Ub grid matches analysis grid
+                f = scipy.interpolate.interp2d(
+                    self.analysis_x, self.analysis_y, Ub, kind='linear')
+                x1, y1, xii, yii = self._get_sorted_coords()
+                tmpUb = f(x1, y1)
+                self.obs_Ub = tmpUb[yii, xii]
+                iflag = True
+            elif grid is None:
                 self.obs_Ub = 0.0
             else:
                 self.obs_Ub = np.interp(rngf, grid, Ub)
         else:
             self.obs_Ub = Ub
+        # Background V
         if Vb is None:
             self.obs_Vb = 0.0
         elif hasattr(Vb, '__len__'):
-            if grid is None:
+            if np.ndim(Vb) == 2:
+                # Assumes that Vb grid matches analysis grid
+                f = scipy.interpolate.interp2d(
+                    self.analysis_x, self.analysis_y, Vb, kind='linear')
+                # Check to see if we already have sorted coords
+                if not iflag:
+                    x1, y1, xii, yii = self._get_sorted_coords()
+                tmpVb = f(x1, y1)
+                self.obs_Vb = tmpVb[yii, xii]
+            elif grid is None:
                 self.obs_Vb = 0.0
             else:
                 self.obs_Vb = np.interp(rngf, grid, Vb)
@@ -631,7 +662,7 @@ class SingleDoppler2D(object):
             self.obs_Vb = Vb
         self.compute_beta_and_m()
         # Following is for Beta as non-radar convention (0 = due East)
-        self.obs_vrbf = self.obs_Ub * np.cos(self.obs_Beta) +\
+        self.obs_vrbf = self.obs_Ub * np.cos(self.obs_Beta) + \
             self.obs_Vb * np.sin(self.obs_Beta)
 
     def get_analysis_background_field(self, Ub, Vb, grid=None):
@@ -646,7 +677,9 @@ class SingleDoppler2D(object):
         if Ub is None:
             self.analysis_Ub = 0.0
         elif hasattr(Ub, '__len__'):
-            if grid is None:
+            if np.ndim(Ub) == 2:
+                self.analysis_Ub = Ub  # Assumes grid is matched
+            elif grid is None:
                 self.analysis_Ub = 0.0
             else:
                 self.analysis_Ub = np.interp(rngf, grid, Ub)
@@ -657,7 +690,9 @@ class SingleDoppler2D(object):
         if Vb is None:
             self.analysis_Vb = 0.0
         elif hasattr(Vb, '__len__'):
-            if grid is None:
+            if np.ndim(Vb) == 2:
+                self.analysis_Vb = Vb  # Assumes grid is matched
+            elif grid is None:
                 self.analysis_Vb = 0.0
             else:
                 self.analysis_Vb = np.interp(rngf, grid, Vb)
@@ -671,6 +706,15 @@ class SingleDoppler2D(object):
             self.analysis_Vb * np.sin(Beta)
         self.analysis_vtb = -1.0 * self.analysis_Ub * np.sin(Beta) + \
             self.analysis_Vb * np.cos(Beta)
+
+    def _get_sorted_coords(self):
+        xi = np.argsort(self.obs_xf)
+        yi = np.argsort(self.obs_yf)
+        x1 = self.obs_xf[xi]
+        y1 = self.obs_yf[yi]
+        xii = np.argsort(xi)
+        yii = np.argsort(yi)
+        return x1, y1, xii, yii
 
 ################################
 
@@ -936,7 +980,7 @@ class AnalysisDisplay(BaseAnalysis):
         """Derived from similar functions in Py-ART"""
         if self.split_cut:
             sweep += 1
-        swpstr = '%.1f deg' % self.radar.fixed_angle['data'][0]
+        swpstr = '%.1f deg' % self.radar.fixed_angle['data'][sweep]
         if 'instrument_name' in self.radar.metadata:
             radstr = self.radar.metadata['instrument_name']
         else:
