@@ -17,7 +17,7 @@ The following dependencies need to be installed first:
 - A robust version of Python 2.7 or 3.4 w/ most standard scientific packages (e.g., numpy, matplotlib, scipy, etc.) - Get one for free here: https://store.continuum.io/cshop/anaconda/
 - [The Python Atmospheric Radiation Measurement (ARM) Radar Toolkit (Py-ART)](https://github.com/ARM-DOE/pyart)
 - [Python Turbulence Detection Algorithm (PyTDA)](https://github.com/nasa/PyTDA)
-- [xray/xarray - optional](http://xarray.pydata.org/en/stable/)
+- [xarray - optional](http://xarray.pydata.org/en/stable/)
 
 Specific import calls in the SingleDop source code:
 ```
@@ -30,20 +30,16 @@ import scipy
 import math
 import time
 import warnings
-import pickle
 import pyart
 from pytda import get_sweep_data, get_sweep_azimuths, get_sweep_elevations, \
                   flatten_and_reduce_data_array
 from .common import radar_coords_to_cart
 from .cmap_map import lighten_cmap
 try:
-    import xarray as xray
+    import xarray
 except ImportError:
-    try:
-        import xray
-    except ImportError:
-        warnings.warn(
-            'xray/xarray not installed, save using SaveFile (pickle)')  
+    warnings.warn(
+        'xarray not installed, cannot load or save SingleDop datasets')  
 ```
 
 Using SingleDop
