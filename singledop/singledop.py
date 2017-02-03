@@ -25,7 +25,7 @@ import singledop
 Notes
 -----
 Dependencies: numpy, matplotlib, basemap, scipy, math, time, pyart, pytda,
-              pickle, warnings, xray/xarray
+              warnings, xarray
 
 
 References
@@ -37,6 +37,11 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v1.1 Changes (02/03/17):
+1. Removed ability to ingest or output data via the pickle module. User must
+   have xarray installed to output data.
+2. Import expects xarray name, and no longer accepts the old name xray.
+
 v1.0 Changes (10/10/16):
 1. Added ability to specify 2D background fields (Ub, Vb). These fields must
    be on same grid as the analysis.
@@ -64,7 +69,7 @@ v0.6 Changes (07/02/15):
 1. Made code pep8 compliant.
 
 v0.5 Changes (05/05/15):
-1. Added NetcdfSave class that uses xray to save/load analysis object
+1. Added NetcdfSave class that uses xarray to save/load analysis object
    to/from netCDF.
 2. Created BaseAnalysis and SimpleObject helper classes to assist
    with refactoring.
@@ -126,24 +131,20 @@ import scipy
 import math
 import time
 import warnings
-import pickle
 import pyart
 from pytda import get_sweep_data, get_sweep_azimuths, get_sweep_elevations, \
                   flatten_and_reduce_data_array
 from .common import radar_coords_to_cart
 from .cmap_map import lighten_cmap
 try:
-    import xarray as xray
+    import xarray
 except ImportError:
-    try:
-        import xray
-    except ImportError:
-        warnings.warn(
-            'xray/xarray not installed, save using SaveFile (pickle)')
+    warnings.warn(
+        'xarray not installed, cannot load or save SingleDop datasets')
 
 ##############################
 
-VERSION = '0.9'
+VERSION = '1.1'
 
 # Hard coding of constants & default parameters
 DEFAULT_L = 30.0  # km
@@ -1026,113 +1027,14 @@ class AnalysisDisplay(BaseAnalysis):
             warnings.warn(wstr)
             return 'Radial Velocity', self.analysis_vr
 
-#############################
-
-
-class SaveFile(object):
-
-    """
-    Purpose of class is create simple I/O interface for
-    singledop.AnalysisDisplay
-    objects, to avoid repeated 2DVAR computations if the analysis is in good
-    shape. Uses pickle to write to or read binary files. Only saves the most
-    critical info needed for AnalysisDiaplay methods. Must provide Py-ART
-    radar object as argument if analysis came from non-synthetic data.
-
-    Use Examples:
-    savefile_instance = singledop.SaveFile(SingleDoppler2D_obj,
-                                           filename='example.dat')
-        -Saves SingleDoppler2D_obj to './example.dat'
-
-    savefile_instance = singledop.SaveFile('example.dat', radar=radar_obj)
-    new_display = singledop.AnalysisDisplay(savefile_instance)
-        -Reads from pre-existing './example.dat' file and populates radar
-         using pre-existing radar object
-        -Creates AnalysisDisplay object
-        -Can also set radar='radar_file.nc' to populate radar object from given
-         radar file
-    """
-
-    def __init__(self, SingleDoppler2D=None, filename=None, filedir='./',
-                 radar=None):
-        """
-        SingleDoppler2D = singledop.SingleDoppler2D object
-        filename = Name of file to write to
-        filedir = Path to file
-        radar = Py-ART radar object or radar file
-        """
-        if SingleDoppler2D is not None:
-            # Account for user just providing string filename for reading as
-            # initial argument?
-            if isinstance(SingleDoppler2D, str):
-                if isinstance(filedir, str):
-                    SingleDoppler2D = filedir+SingleDoppler2D
-                print('Attempting to read from', SingleDoppler2D)
-                self.read_from_file(filename=filedir+SingleDoppler2D,
-                                    radar=radar)
-                return
-            # Rest assumes user provided non-string object
-            print('Initializing singledop.SaveFile object')
-            self.populate_attributes(SingleDoppler2D)
-            if filename is not None and isinstance(filename, str) and \
-               isinstance(filedir, str):
-                print('Writing to', filedir+filename)
-                self.write_to_file(filename, filedir)
-        elif filename is not None and isinstance(filename, str) and \
-                isinstance(filedir, str):
-            print('Reading from', filedir+filename)
-            self.read_from_file(filename, filedir, radar)
-        else:
-            warnings.warn('No valid arguments given, failing ...')
-
-    def populate_attributes(self, SingleDoppler2D):
-        """SingleDoppler2D = singledop.SingleDoppler2D object"""
-        if hasattr(SingleDoppler2D, 'analysis_vr'):
-            self.grid_limits = SingleDoppler2D.grid_limits
-            self.analysis_x = SingleDoppler2D.analysis_x
-            self.analysis_y = SingleDoppler2D.analysis_y
-            self.analysis_vr = SingleDoppler2D.analysis_vr
-            self.analysis_vt = SingleDoppler2D.analysis_vt
-            if not hasattr(SingleDoppler2D, 'analysis_u'):
-                SingleDoppler2D.get_velocity_vectors()
-            self.analysis_u = SingleDoppler2D.analysis_u
-            self.analysis_v = SingleDoppler2D.analysis_v
-            self.L = SingleDoppler2D.L
-        else:
-            warnings.warn('Not singledop.SingleDoppler2D object, failing ...')
-            return
-
-    def write_to_file(self, filename, filedir='./'):
-        """
-        filename = Name of file to write to
-        filedir = Path to file
-        """
-        filename = filedir + filename
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f)
-
-    def read_from_file(self, filename, filedir='./', radar=None):
-        """
-        filename = Name of file to read from
-        filedir = Path to file
-        radar = Py-ART radar object or radar file
-        """
-        filename = filedir + filename
-        with open(filename, 'rb') as f:
-            loadobj = pickle.load(f)
-        self.populate_attributes(loadobj)
-        if isinstance(radar, str):
-            radar = pyart.io.read(radar)
-        self.radar = radar
-
-#############################
+################################
 
 
 class NetcdfSave(object):
 
     """
     Class to facilitate saving/loading to/from a netCDF file.
-    Uses xray module to interface with netCDF.
+    Uses xarray module to interface with netCDF.
 
     Example - Load from netCDF & import into AnalysisDisplay class:
     example = singledop.NetcdfSave('your_file_here.nc')
@@ -1168,7 +1070,7 @@ class NetcdfSave(object):
         self.check_for_radar_object()
 
     def reformat_for_netcdf(self):
-        """Creates an xray.Dataset object from SingleDoppler2D attributes"""
+        """Creates an xarray.Dataset object from SingleDoppler2D attributes"""
         if not hasattr(self.analysis, 'analysis_u'):
             self.analysis.get_velocity_vectors()
         if hasattr(self.analysis, 'radar'):
@@ -1187,13 +1089,13 @@ class NetcdfSave(object):
         else:
             att = None
         self._get_data_arrays()
-        self.ds = xray.Dataset(self.da, attrs=att)
+        self.ds = xarray.Dataset(self.da, attrs=att)
 
     def save_to_netcdf(self):
         self.ds.to_netcdf(self.filename, format='NETCDF3_CLASSIC')
 
     def load_from_netcdf(self):
-        self.ds = xray.open_dataset(self.filename)
+        self.ds = xarray.open_dataset(self.filename)
 
     def check_for_radar_object(self):
         if self.radar is not None:
@@ -1221,28 +1123,28 @@ class NetcdfSave(object):
         ms = 'meters per second'
         cow = ' component of wind'
         self.da = {}
-        self.da['analysis_x'] = xray.DataArray(
+        self.da['analysis_x'] = xarray.DataArray(
             self.analysis.analysis_x, dims=dxy,
             attrs=var_atts('distance east from radar', km))
-        self.da['analysis_y'] = xray.DataArray(
+        self.da['analysis_y'] = xarray.DataArray(
             self.analysis.analysis_y, dims=dxy,
             attrs=var_atts('distance north from radar', km))
-        self.da['analysis_u'] = xray.DataArray(
+        self.da['analysis_u'] = xarray.DataArray(
             self.analysis.analysis_u, dims=dxy,
             attrs=var_atts('eastward' + cow, ms))
-        self.da['analysis_v'] = xray.DataArray(
+        self.da['analysis_v'] = xarray.DataArray(
             self.analysis.analysis_v, dims=dxy,
             attrs=var_atts('northward' + cow, ms))
-        self.da['analysis_vr'] = xray.DataArray(
+        self.da['analysis_vr'] = xarray.DataArray(
             self.analysis.analysis_vr, dims=dxy,
             attrs=var_atts('radial' + cow, ms))
-        self.da['analysis_vt'] = xray.DataArray(
+        self.da['analysis_vt'] = xarray.DataArray(
             self.analysis.analysis_vt, dims=dxy,
             attrs=var_atts('tangential' + cow, ms))
-        self.da['grid_limits'] = xray.DataArray(
+        self.da['grid_limits'] = xarray.DataArray(
             self.analysis.grid_limits,
             attrs=var_atts('x & y boundaries for rectangular grid', km))
-        self.da['L'] = xray.DataArray(
+        self.da['L'] = xarray.DataArray(
             self.analysis.L, attrs=var_atts('decorrelation length scale', km))
 
 #############################
