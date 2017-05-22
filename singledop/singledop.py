@@ -2,9 +2,9 @@
 Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
-singledop v1.0
+singledop v1.2
 Developed & tested with Python 2.7 & 3.4
-Last changed 10/10/2016
+Last changed 05/22/2016
 
 
 Author
@@ -37,6 +37,13 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v1.2 Changes (05/22/17):
+1. Added exception handling due to singular matrix errors on certain volumes.
+   If this occurs, the scipy.linalg.solve call() will be made without the
+   symmetric and positive definite assumption.
+2. Added debug keyword, which enables saving A and b matrices as attributes to
+   SingleDoppler2D.
+
 v1.1 Changes (02/03/17):
 1. Removed ability to ingest or output data via the pickle module. User must
    have xarray installed to output data.
@@ -218,7 +225,7 @@ class SingleDoppler2D(object):
                  az_spacing=2.0, use_vad=True, verbose=False,
                  range_spacing=1.0, range_limits=None, azimuth_limits=None,
                  max_range=100.0, xgrid=None, ygrid=None, thin_factor=[2, 4],
-                 filter_data=False, filter_distance=None):
+                 filter_data=False, filter_distance=None, debug=False):
         """
         Initializes class based on user-specified information. If user provides
         Py-ART radar object, the analysis will be performed on the real data.
@@ -253,6 +260,7 @@ class SingleDoppler2D(object):
                       from observations
         filter_distance = Min distance (km) from nearest obs to filter data.
                           Set to L / 2 by default.
+        debug = Set to True to save the A and b matrices as attributes
         """
         self.populate_analysis_metadata(grid_spacing=grid_spacing,
                                         grid_edge=grid_edge, sigma=sigma,
@@ -301,7 +309,7 @@ class SingleDoppler2D(object):
             self.get_obs_background_field(0.0, 0.0)  # Bkgrnd 0 in sims for now
             self.get_analysis_background_field(0.0, 0.0)
         # Actual retrieval done here
-        self.compute_single_doppler_retrieval()
+        self.compute_single_doppler_retrieval(debug=debug)
 
     def populate_analysis_metadata(
             self, grid_spacing=DEFAULT_GRID_SPACING,
@@ -468,10 +476,17 @@ class SingleDoppler2D(object):
         if azimuth_cond is not None and range_cond is None:
             return azimuth_cond.ravel()
 
-    def compute_single_doppler_retrieval(self):
+    def compute_single_doppler_retrieval(self, debug=False):
         """
         Performs single-Doppler retrieval whether input data are real
-        or simulated. Matrix equations solved via stock SciPy/NumPy routines
+        or simulated. Matrix equations solved via stock SciPy/NumPy routines.
+
+        Parameters
+        ----------
+        debug : bool
+            True - Save A and b matrices as attributes
+
+            False - Don't do this
         """
         for index in np.arange(self.M):
             Beta1 = math.atan2(self.obs_yf[index], self.obs_xf[index])
@@ -481,8 +496,15 @@ class SingleDoppler2D(object):
             self.obs_Crr[index, :] = Ctmp[:]
         A = self.obs_Crr + self.sigma_obs**2 * np.eye(self.M)
         b = self.obs_vrf - self.obs_vrbf  # Observation innovation vector
-        self.z_vector = scipy.linalg.solve(A, b, sym_pos=True)
-        # self.z_vector = np.linalg.solve(A, b)  # scipy appears to be faster
+        if debug:
+            self.A = A
+            self.b = b
+        try:
+            # scipy appears to be faster
+            self.z_vector = scipy.linalg.solve(A, b, sym_pos=True)
+        except:
+            print('Singular matrix error, retrying assuming generic matrix')
+            self.z_vector = scipy.linalg.solve(A, b)
         delta_vr = 0.0 * self.analysis_xf
         delta_vt = 0.0 * self.analysis_xf
         for index in np.arange(len(self.analysis_xf)):
