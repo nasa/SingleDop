@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='SingleDop',
-    version='1.1',
+    version='1.2',
     author='Timothy Lang',
     author_email='timothy.j.lang@nasa.gov',
     packages=['singledop',],
