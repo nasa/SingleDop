@@ -37,6 +37,14 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v1.2.1 Changes (05/24/18):
+1. Added additional keyword options to four_panel_plot to enable greater
+   display flexibility.
+2. Removed the lighten_cmap option for the default DZ colormap, as this was
+   failing on newer versions of matplotlib. Instead added dz_alpha keyword
+   to four_panel_plot to adjust the alpha value of the DZ PPI.
+3. Miscellaneous documentation improvements.
+
 v1.2 Changes (05/22/17):
 1. Added exception handling due to singular matrix errors on certain volumes.
    If this occurs, the scipy.linalg.solve call() will be made without the
@@ -163,7 +171,8 @@ DEFAULT_VR = 'velocity'
 DEFAULT_DZ = 'reflectivity'
 re = 6371.1  # km
 RNG_MULT = 1000.0  # m per km
-DZ_CMAP = lighten_cmap(cm.get_cmap('pyart_LangRainbow12'))
+# DZ_CMAP = lighten_cmap(cm.get_cmap('pyart_LangRainbow12'))
+DZ_CMAP = cm.get_cmap('pyart_LangRainbow12')
 VR_CMAP = 'bwr'
 DEFAULT_LABELS = ['Distance E-W (km)', 'Distance N-S (km)']
 DEFAULT_LEVELS = -24.0 + 4.0 * np.arange(13)
@@ -251,7 +260,9 @@ class SingleDoppler2D(object):
         use_vad = Flag to do VAD analysis on real radar obs
         verbose = Flag to provide additional text updates
         range_spacing = Spacing used to develop synthetic radar obs (km)
-        range_limits = 2-element array to designate analysis range limits (km)
+        range_limits = 2-element array to designate analysis range limits (km).
+                       Max range should be <= max range of the input data,
+                       if use_vad is set to True.
         azimuth_limits = 2-element array to mask azimuths (deg, simulated data)
         max_range = Maximum range to consider in analysis (km)
         xgrid, ygrid = User-specified 1D input grids for each axis (simulated)
@@ -867,7 +878,8 @@ class AnalysisDisplay(BaseAnalysis):
     def four_panel_plot(self, scale=600.0, levels=-24.0+4.0*np.arange(13),
                         cmap='bwr', return_flag=False, thin=4, legend=10.0,
                         save=None, name_dz=DEFAULT_DZ, name_vr=DEFAULT_VR,
-                        split_cut=False, sweep=0):
+                        split_cut=False, sweep=0, dz_cmap=DZ_CMAP,
+                        dz_alpha=0.5, xlim=None, ylim=None, dz_limits=[0, 65]):
         """
         Produces 4-panel plot
         (a) = Observed Vr
@@ -880,6 +892,10 @@ class AnalysisDisplay(BaseAnalysis):
         return_flag = set to true to return figure and axes objects
         name_dz = name of radar reflectivity field
         name_vr = name of radar Doppler velocity field
+        dz_cmap = Colormap to use for reflectivity field
+        dz_alpha = Alpha value to help lighten the reflectivity colormap
+        xlim, ylim = Use these tuples to adjust the domain displayed
+        dzlimits = Tuple containing vmin and vmax for the reflectivity display
 
         See plot_velocity_vectors() and plot_velocity_contours() for
         more info on arguments and keywords
@@ -893,13 +909,19 @@ class AnalysisDisplay(BaseAnalysis):
         fig, ax1 = self._four_pan_subplot_a(display, name_vr, levels, cmap,
                                             sweep)
         fig, ax2 = self._four_pan_subplot_b(fig, display, name_dz, scale,
-                                            legend, thin, sweep)
+                                            legend, thin, sweep, dz_cmap,
+                                            dz_alpha, dz_limits)
         fig, ax3 = self._four_pan_subplot_c(fig, levels, cmap)
         fig, ax4 = self._four_pan_subplot_d(fig, levels, cmap)
-        fig, cb1 = self._four_pan_colorbar_1(fig)
+        fig, cb1 = self._four_pan_colorbar_1(fig, dz_cmap, dz_limits)
         fig, cb2 = self._four_pan_colorbar_2(fig, levels, cmap)
         title_text = self._get_radar_info(sweep)
         fig.suptitle(title_text, fontsize=14, y=0.94)
+        for ax in [ax1, ax2, ax3, ax4]:
+            if xlim is not None:
+                ax.set_xlim(xlim)
+            if ylim is not None:
+                ax.set_ylim(ylim)
         self._save_image(save)
         if return_flag:
             return fig, ax1, ax2, ax3, ax4
@@ -956,10 +978,11 @@ class AnalysisDisplay(BaseAnalysis):
         return fig, ax1
 
     def _four_pan_subplot_b(self, fig, display, name_dz, scale, legend, thin,
-                            sweep):
+                            sweep, dz_cmap, dz_alpha, dz_limits):
         ax2 = fig.add_subplot(222)
-        display.plot_ppi(name_dz, sweep, vmin=0.0, vmax=65.0, cmap=DZ_CMAP,
-                         colorbar_flag=False, axislabels=DEFAULT_LABELS)
+        display.plot_ppi(name_dz, sweep, vmin=dz_limits[0], vmax=dz_limits[1],
+                         cmap=dz_cmap, colorbar_flag=False,
+                         axislabels=DEFAULT_LABELS, alpha=dz_alpha)
         display.set_limits(xlim=self.grid_limits, ylim=self.grid_limits)
         self.plot_velocity_vectors(scale=scale, thin=thin, legend=legend,
                                    title='(b) Vector Velocity Field')
@@ -979,14 +1002,14 @@ class AnalysisDisplay(BaseAnalysis):
                                     title='(d) Analyzed Tangential Velocity')
         return fig, ax4
 
-    def _four_pan_colorbar_1(self, fig):
-        a = np.array([[0, 65]])
+    def _four_pan_colorbar_1(self, fig, cmap, dz_limits):
+        a = np.array([dz_limits])
         fig.add_axes([0.01, 0.01, 0.02, 0.02])
-        img1 = plt.imshow(a, cmap=DZ_CMAP)
+        img1 = plt.imshow(a, cmap=cmap)
         plt.gca().set_visible(False)
         cax1 = fig.add_axes([0.92, 0.55, 0.02, 0.35])
         cb1 = plt.colorbar(orientation='vertical', cax=cax1)
-        cb1.set_label('dBZ')
+        cb1.set_label('Reflectivity (dBZ)')
         return fig, cb1
 
     def _four_pan_colorbar_2(self, fig, levels, cmap):
@@ -996,7 +1019,7 @@ class AnalysisDisplay(BaseAnalysis):
         plt.gca().set_visible(False)
         cax2 = fig.add_axes([0.92, 0.125, 0.02, 0.35])
         cb2 = plt.colorbar(cax=cax2, orientation='vertical')
-        cb2.set_label('m/s')
+        cb2.set_label('Doppler Velocity (m/s)')
         return fig, cb2
 
     def _get_radar_info(self, sweep):
@@ -1005,7 +1028,10 @@ class AnalysisDisplay(BaseAnalysis):
             sweep += 1
         swpstr = '%.1f deg' % self.radar.fixed_angle['data'][sweep]
         if 'instrument_name' in self.radar.metadata:
-            radstr = self.radar.metadata['instrument_name']
+            try:
+                radstr = self.radar.metadata['instrument_name'].decode('utf-8')
+            except AttributeError:
+                radstr = self.radar.metadata['instrument_name']
         else:
             radstr = ''
         try:
