@@ -7,14 +7,14 @@ The interface is simplified to a single line of code in the end user's Python sc
 
 SingleDop Installation
 ----------------------
-SingleDop works under Python 2.7 and 3.4 on most Mac/Linux setups. Windows installation and other Python versions are currently untested.
+SingleDop works under Python 2.7-3.8 on most Mac/Linux setups. Windows installation and other Python versions are currently untested.
 
 To install:  
 `python setup.py install`
 
 The following dependencies need to be installed first:
 
-- A robust version of Python 2.7 or 3.4 w/ most standard scientific packages (e.g., numpy, matplotlib, scipy, etc.) - Get one for free here: https://store.continuum.io/cshop/anaconda/
+- A robust version of Python 2.7-3.8 w/ most standard scientific packages (e.g., numpy, matplotlib, scipy, etc.) - Get one for free here: https://store.continuum.io/cshop/anaconda/
 - [The Python Atmospheric Radiation Measurement (ARM) Radar Toolkit (Py-ART)](https://github.com/ARM-DOE/pyart)
 - [Python Turbulence Detection Algorithm (PyTDA)](https://github.com/nasa/PyTDA)
 - [xarray - optional](http://xarray.pydata.org/en/stable/)
