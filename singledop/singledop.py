@@ -2,9 +2,9 @@
 Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
-singledop v1.2
-Developed & tested with Python 2.7 & 3.4
-Last changed 05/22/2016
+singledop v1.2.2
+Developed & tested with Python 2.7-3.8
+Last changed 10/12/22
 
 
 Author
@@ -37,6 +37,11 @@ using Doppler-radar radial-velocity observations. Q. J. R. Meteorol. Soc., 132,
 
 Change Log
 ----------
+v1.2.2 Changes (10/12/22):
+1. Removed scipy matrix solver and associated exception handling and if
+   statements. The scipy version was causing issues with some systems.
+2. The numpy.linalg.solve is the only matrix solving function now.
+
 v1.2.1 Changes (05/24/18):
 1. Added additional keyword options to four_panel_plot to enable greater
    display flexibility.
@@ -159,7 +164,7 @@ except ImportError:
 
 ##############################
 
-VERSION = '1.1'
+VERSION = '1.2.2'
 
 # Hard coding of constants & default parameters
 DEFAULT_L = 30.0  # km
@@ -490,7 +495,7 @@ class SingleDoppler2D(object):
     def compute_single_doppler_retrieval(self, debug=False):
         """
         Performs single-Doppler retrieval whether input data are real
-        or simulated. Matrix equations solved via stock SciPy/NumPy routines.
+        or simulated. Matrix equations solved via stock NumPy routine.
 
         Parameters
         ----------
@@ -510,12 +515,10 @@ class SingleDoppler2D(object):
         if debug:
             self.A = A
             self.b = b
-        try:
-            # scipy appears to be faster
-            self.z_vector = scipy.linalg.solve(A, b, sym_pos=True)
-        except:
-            print('Singular matrix error, retrying assuming generic matrix')
-            self.z_vector = scipy.linalg.solve(A, b)
+
+        # Solve the matrix equation, this is the main processing hit
+        self.z_vector = np.linalg.solve(A, b)
+
         delta_vr = 0.0 * self.analysis_xf
         delta_vt = 0.0 * self.analysis_xf
         for index in np.arange(len(self.analysis_xf)):
