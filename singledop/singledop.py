@@ -2,7 +2,7 @@
 Title/Version
 -------------
 Single Doppler Retrieval Toolkit (SingleDop)
-singledop v1.2
+singledop v1.2.2
 Developed & tested with Python 2.7-3.8
 Last changed 10/12/22
 
